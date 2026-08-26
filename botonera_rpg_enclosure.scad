@@ -223,11 +223,6 @@ module top_lid() {
             speaker_acoustic_grill(speaker_dia, grill_hole_dia, grill_hole_spacing, top_thick * 2);
             
         screw_holes_top();
-        
-        // Grabado de texto
-        translate([speaker_pos_x, speaker_pos_y - speaker_dia/2 - 10.0, top_h - 0.4])
-            linear_extrude(height = 0.5)
-                text("BOTONERA RPG", size = 4.5, font = "Liberation Sans:style=Bold", halign = "center", valign = "center");
     }
 }
 
