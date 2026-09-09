@@ -76,9 +76,12 @@ post_inset         = 7.0;   // Distancia de centros de postes a bordes exteriore
 
 /* [Standoffs Internos para Arduino Nano y DFPlayer / PCB] */
 enable_pcb_standoffs = true;
-standoff_dia       = 6.0;
-standoff_hole_dia  = 2.2;   // Para tornillos autorroscantes M2 / M2.5
-standoff_height    = 4.5;   // Altura de elevación sobre el fondo (mm)
+standoff_dia         = 6.0;
+standoff_hole_dia    = 2.2;   // Para tornillos autorroscantes M2 / M2.5
+standoff_height      = 4.5;   // Altura de elevación sobre el fondo (mm)
+
+// Modo de soporte: "nano_direct" (alineado a USB trasero) o "carrier_pcb" (placa prototipo 50x70)
+pcb_mount_mode       = "nano_direct"; // ["nano_direct", "carrier_pcb"]
 
 // Calidad de curvas
 $fn = 40;
@@ -133,31 +136,37 @@ module speaker_acoustic_grill(outer_dia, hole_dia, spacing, thickness) {
 module bottom_box() {
     difference() {
         union() {
-            rounded_cube([box_width, box_depth, bottom_h], corner_radius);
-            
-            // Labio de encastre perimetral
-            translate([wall_thickness + lip_tolerance, wall_thickness + lip_tolerance, bottom_h - eps])
-                rounded_cube([
-                    inner_w - 2*lip_tolerance, 
-                    inner_d - 2*lip_tolerance, 
-                    lip_height + eps
-                ], max(1.0, corner_radius - wall_thickness));
+            // 1. Estructura hueca de la caja
+            difference() {
+                union() {
+                    rounded_cube([box_width, box_depth, bottom_h], corner_radius);
+                    
+                    // Labio de encastre perimetral
+                    translate([wall_thickness + lip_tolerance, wall_thickness + lip_tolerance, bottom_h - eps])
+                        rounded_cube([
+                            inner_w - 2*lip_tolerance, 
+                            inner_d - 2*lip_tolerance, 
+                            lip_height + eps
+                        ], max(1.0, corner_radius - wall_thickness));
+                        
+                    corner_posts(bottom_h, is_bottom = true);
+                }
                 
-            corner_posts(bottom_h, is_bottom = true);
+                // Vaciado interior
+                translate([wall_thickness, wall_thickness, bottom_thick])
+                    rounded_cube([inner_w, inner_d, bottom_h + lip_height + 2*eps], max(0.5, corner_radius - wall_thickness));
+                    
+                translate([wall_thickness + 1.2, wall_thickness + 1.2, bottom_thick])
+                    rounded_cube([inner_w - 2.4, inner_d - 2.4, bottom_h + lip_height + 4*eps], max(0.5, corner_radius - wall_thickness - 1.2));
+            }
             
+            // 2. Standoffs interiores agregados después del vaciado para no ser eliminados
             if (enable_pcb_standoffs) {
                 pcb_mounts();
             }
         }
         
-        // Vaciado interior
-        translate([wall_thickness, wall_thickness, bottom_thick])
-            rounded_cube([inner_w, inner_d, bottom_h + lip_height + 2*eps], max(0.5, corner_radius - wall_thickness));
-            
-        translate([wall_thickness + 1.2, wall_thickness + 1.2, bottom_thick])
-            rounded_cube([inner_w - 2.4, inner_d - 2.4, bottom_h + lip_height + 4*eps], max(0.5, corner_radius - wall_thickness - 1.2));
-            
-        // Orificios pasantes con avellanado
+        // 3. Perforaciones, conectores y detalles
         screw_holes_bottom();
         
         // Puerto USB Arduino Nano (Pared trasera)
@@ -271,23 +280,43 @@ module screw_holes_top() {
 }
 
 module pcb_mounts() {
-    nano_x = 18.0;
-    nano_y = 60.0;
-    nano_w = 44.0;
-    nano_d = 18.0;
-    
-    nano_mount_coords = [
-        [nano_x, nano_y],
-        [nano_x + nano_w, nano_y],
-        [nano_x + nano_w, nano_y + nano_d],
-        [nano_x, nano_y + nano_d]
-    ];
-    for (pt = nano_mount_coords) {
+    // Coordenadas calculadas según el modo seleccionado
+    coords = (pcb_mount_mode == "nano_direct") ? 
+        // 1. Arduino Nano alineado longitudinalmente al puerto USB trasero (X = 28.0, Y contra pared trasera)
+        let(
+            nano_pitch_x = 15.2, // Distancia entre orificios/lados en X
+            nano_pitch_y = 40.0, // Distancia entre orificios en Y
+            rear_wall_y  = box_depth - wall_thickness,
+            y_rear       = rear_wall_y - 2.5,
+            y_front      = y_rear - nano_pitch_y,
+            x_left       = usb_pos_x - nano_pitch_x / 2,
+            x_right      = usb_pos_x + nano_pitch_x / 2
+        ) [
+            [x_left, y_front],
+            [x_right, y_front],
+            [x_right, y_rear],
+            [x_left, y_rear]
+        ]
+        : 
+        // 2. Placa portadora / Protoboard 50x70 mm estándar (orificios a 46mm x 66mm)
+        let(
+            pcb_pitch_x = 46.0,
+            pcb_pitch_y = 66.0,
+            x_start     = 10.0,
+            y_start     = box_depth - wall_thickness - 70.0 + 2.0
+        ) [
+            [x_start, y_start],
+            [x_start + pcb_pitch_x, y_start],
+            [x_start + pcb_pitch_x, y_start + pcb_pitch_y],
+            [x_start, y_start + pcb_pitch_y]
+        ];
+
+    for (pt = coords) {
         translate([pt[0], pt[1], bottom_thick - eps])
             difference() {
-                cylinder(d = standoff_dia, h = standoff_height);
+                cylinder(d = standoff_dia, h = standoff_height + eps);
                 translate([0, 0, -eps])
-                    cylinder(d = standoff_hole_dia, h = standoff_height + 2*eps);
+                    cylinder(d = standoff_hole_dia, h = standoff_height + 3*eps);
             }
     }
 }
