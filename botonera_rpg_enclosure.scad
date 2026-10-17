@@ -166,8 +166,6 @@ module bottom_box() {
             }
         }
         
-        // 3. Perforaciones, conectores y detalles
-        screw_holes_bottom();
         
         // Puerto USB Arduino Nano (Pared trasera)
         translate([usb_pos_x - usb_cutout_w/2, box_depth - wall_thickness - 2*eps, usb_pos_z - usb_cutout_h/2])
@@ -251,33 +249,7 @@ module corner_posts(h, is_bottom = true) {
     }
 }
 
-module screw_holes_bottom() {
-    post_positions = [
-        [post_inset, post_inset],
-        [box_width - post_inset, post_inset],
-        [box_width - post_inset, box_depth - post_inset],
-        [post_inset, box_depth - post_inset]
-    ];
-    for (pos = post_positions) {
-        translate([pos[0], pos[1], -eps]) {
-            cylinder(d = screw_hole_dia, h = bottom_h + 2*eps);
-            cylinder(d = screw_head_dia, h = screw_head_depth + eps);
-        }
-    }
-}
 
-module screw_holes_top() {
-    post_positions = [
-        [post_inset, post_inset],
-        [box_width - post_inset, post_inset],
-        [box_width - post_inset, box_depth - post_inset],
-        [post_inset, box_depth - post_inset]
-    ];
-    for (pos = post_positions) {
-        translate([pos[0], pos[1], -eps])
-            cylinder(d = insert_hole_dia, h = top_h - top_thick + eps);
-    }
-}
 
 module pcb_mounts() {
     // Coordenadas calculadas según el modo seleccionado
